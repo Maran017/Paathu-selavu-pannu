@@ -1,0 +1,8 @@
+paddlepaddle
+pyTelegramBotAPI
+paddleocr
+opencv-python-headless
+numpy
+Pillow
+requests
+
