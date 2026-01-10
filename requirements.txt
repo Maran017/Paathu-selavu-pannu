@@ -5,6 +5,7 @@ opencv-python-headless
 numpy
 Pillow
 flask
+python-dotenv
 
 
 

@@ -1,18 +1,21 @@
-import telebot
-from telebot import types
-import csv
-import os
-import json
-from datetime import datetime
-import re
-import traceback
+from dotenv import load_dotenv
+load_dotenv()  # must be at the very top, before reading env variables
 
+import telebot
+import os
+from telebot import types
+import csv, json, re, traceback
+from datetime import datetime
 import cv2
 from paddleocr import PaddleOCR
 
 # ================= TOKENS =================
 TELEGRAM_BOT_TOKEN = os.getenv("BOT_TOKEN")
+print("BOT TOKEN:", TELEGRAM_BOT_TOKEN)  # debug: check if token is loaded
 # =========================================
+
+if TELEGRAM_BOT_TOKEN is None:
+    raise ValueError("BOT_TOKEN not found in environment variables!")
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
