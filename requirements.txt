@@ -6,6 +6,8 @@ numpy
 Pillow
 flask
 python-dotenv
+pytz
+
 
 
 

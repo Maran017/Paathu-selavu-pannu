@@ -6,9 +6,12 @@ import os
 from telebot import types
 import csv, json, re, traceback
 from datetime import datetime
+import pytz
+
 import cv2
 from paddleocr import PaddleOCR
 
+IST = pytz.timezone("Asia/Kolkata")
 # ================= TOKENS =================
 TELEGRAM_BOT_TOKEN = os.getenv("BOT_TOKEN")
 print("BOT TOKEN:", TELEGRAM_BOT_TOKEN)  # debug: check if token is loaded
@@ -623,7 +626,7 @@ def manual_flow(message):
     # -------- DATE OPTION --------
     elif entry["state"] == "date":
         if "Current" in message.text:
-            entry["date"] = datetime.now().strftime("%d-%m-%Y")
+            entry["date"] = datetime.now(IST).strftime("%d-%m-%Y")
             entry["state"] = "time"
             bot.send_message(
                 message.chat.id,
@@ -654,7 +657,7 @@ def manual_flow(message):
     # -------- TIME OPTION --------
     elif entry["state"] == "time":
         if "Current" in message.text:
-            entry["time"] = datetime.now().strftime("%H:%M")
+            entry["time"] = datetime.now(IST).strftime("%H:%M")
             entry["state"] = "place"
             m = types.ReplyKeyboardMarkup(resize_keyboard=True)
             m.add("🚫 Cancel")
