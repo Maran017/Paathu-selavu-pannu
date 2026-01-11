@@ -7,14 +7,13 @@ from telebot import types
 import csv, json, re, traceback
 from datetime import datetime
 import pytz
-
+import threading
 import cv2
 from paddleocr import PaddleOCR
 
 IST = pytz.timezone("Asia/Kolkata")
 # ================= TOKENS =================
 TELEGRAM_BOT_TOKEN = os.getenv("BOT_TOKEN")
-print("BOT TOKEN:", TELEGRAM_BOT_TOKEN)  # debug: check if token is loaded
 # =========================================
 
 if TELEGRAM_BOT_TOKEN is None:
@@ -463,6 +462,53 @@ def parse_bill(text):
         "amount": amount
     }
 
+def run_ocr_and_reply(message, img_path, processing_msg):
+    try:
+        # OCR (HEAVY TASK → background)
+        text = extract_text_from_bill(img_path)
+
+        # Delete image (privacy)
+        if os.path.exists(img_path):
+            os.remove(img_path)
+
+        if not text.strip():
+            raise ValueError("Empty OCR")
+
+        data = parse_bill(text)
+
+        # Remove "Processing..." message
+        bot.delete_message(
+            message.chat.id,
+            processing_msg.message_id
+        )
+
+        pending_entries[message.chat.id] = {
+            "state": "confirm",
+            "data": data
+        }
+
+        bot.send_message(
+            message.chat.id,
+            f"""📋 *Confirm Details*
+
+📅 Date: {data.get('date') or '—'}
+🕐 Time: {data.get('time') or '—'}
+📍 Place: {data.get('place') or '—'}
+📁 Category: {data.get('category') or '—'}
+💵 Amount: ₹{data.get('amount') or '—'}""",
+            parse_mode="Markdown",
+            reply_markup=confirm_menu()
+        )
+
+    except Exception:
+        traceback.print_exc()
+        bot.send_message(
+            message.chat.id,
+            "❌ Couldn't read bill clearly.\nTry another image or use manual entry.",
+            reply_markup=main_menu()
+        )
+
+
 # ================= BILL PHOTO =================
 
 @bot.message_handler(func=lambda m: m.text == "📸 Add by Bill Photo")
@@ -491,44 +537,11 @@ def bill_photo_handler(message):
         with open(img_path, "wb") as f:
             f.write(file_bytes)
 
-        # OCR (NO preprocessing)
-        text = extract_text_from_bill(img_path)
-
-        # Delete image immediately (privacy)
-        os.remove(img_path)
-
-        print("===== OCR TEXT =====")
-        print(text)
-        print("====================")
-
-        if not text.strip():
-            raise ValueError("Empty OCR")
-
-        # Rule-based extraction
-        data = parse_bill(text)
-
-        bot.delete_message(
-            message.chat.id,
-            processing_msg.message_id
-        )
-
-        pending_entries[message.chat.id] = {
-            "state": "confirm",
-            "data": data
-        }
-
-        bot.send_message(
-            message.chat.id,
-            f"""📋 *Confirm Details*
-
-📅 Date: {data.get('date') or '—'}
-🕐 Time: {data.get('time') or '—'}
-📍 Place: {data.get('place') or '—'}
-📁 Category: {data.get('category') or '—'}
-💵 Amount: ₹{data.get('amount') or '—'}""",
-            parse_mode="Markdown",
-            reply_markup=confirm_menu()
-        )
+        threading.Thread(
+            target=run_ocr_and_reply,
+            args=(message, img_path, processing_msg),
+            daemon=True
+        ).start()
 
     except Exception as e:
         traceback.print_exc()
